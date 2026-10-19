@@ -1,0 +1,43 @@
+.chart-overlay-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 2px;color:var(--muted,#718096);font-size:12px}.chart-overlay-controls label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}.chart-overlay-controls input{accent-color:#3979d6}.candle-chart-svg{width:100%;height:auto;min-height:280px;overflow:visible}.candle-chart-svg text{font-size:10px;fill:var(--muted,#718096)}.candle-chart-svg .pdh-line{stroke:#d97706;stroke-dasharray:5 4;stroke-width:1}.candle-chart-svg .pdl-line{stroke:#7c3aed;stroke-dasharray:5 4;stroke-width:1}.candle-chart-svg .ema20-line{fill:none;stroke:#eab308;stroke-width:1.5}.candle-chart-svg .ema50-line{fill:none;stroke:#2563eb;stroke-width:1.5}.candle-chart-svg .ema100-line{fill:none;stroke:#a855f7;stroke-width:1.5}.candle-chart-svg .ema200-line{fill:none;stroke:#f97316;stroke-width:1.7}.candle-chart-svg .vwap-line{fill:none;stroke:#0891b2;stroke-width:1.6;stroke-dasharray:3 2}
+
+/* Step 5: chronological news and corporate catalyst presentation */
+.news-timeline{display:flex;flex-direction:column;gap:0;max-height:780px;overflow:auto;padding-right:3px}
+.news-timeline-item{display:grid;grid-template-columns:12px minmax(0,1fr);gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.news-timeline-item:last-child{border-bottom:0}
+.news-timeline-rail{width:8px;height:8px;border-radius:50%;margin:7px 0 0 2px;background:var(--muted,#718096);box-shadow:0 0 0 4px color-mix(in srgb,var(--muted,#718096) 13%,transparent)}
+.news-timeline-rail.positive{background:var(--green,#16a34a);box-shadow:0 0 0 4px color-mix(in srgb,var(--green,#16a34a) 13%,transparent)}
+.news-timeline-rail.negative{background:var(--red,#dc2626);box-shadow:0 0 0 4px color-mix(in srgb,var(--red,#dc2626) 13%,transparent)}
+.news-timeline-meta,.news-timeline-foot,.catalyst-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.news-timeline-meta{font-size:11px;color:var(--muted,#718096)}
+.news-timeline-main h3{font-size:14px;line-height:1.4;margin:7px 0 5px;font-weight:750}
+.news-timeline-main p,.catalyst-content p{font-size:12px;line-height:1.55;color:var(--muted,#718096);margin:0 0 8px;overflow-wrap:anywhere}
+.news-timeline-foot{justify-content:space-between}
+.catalyst-list{display:flex;flex-direction:column;gap:0;max-height:780px;overflow:auto}
+.catalyst-row{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.catalyst-row:last-child{border-bottom:0}
+.catalyst-date{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.catalyst-date strong{font-size:13px;color:var(--accent,#3979d6)}
+.catalyst-date span{font-size:10px;color:var(--muted,#718096);overflow-wrap:anywhere}
+.catalyst-content>strong{font-size:13px;line-height:1.45;display:block;margin-bottom:5px}
+.catalyst-tags{margin-top:6px}
+@media(max-width:800px){.news-timeline,.catalyst-list{max-height:none}.news-timeline-foot{align-items:flex-start;flex-direction:column}.catalyst-row{grid-template-columns:64px minmax(0,1fr);gap:8px}}
+
+
+/* Evidence-first post-analysis Q&A */
+.qa-panel{border:1px solid var(--line, #d8dee8);border-radius:14px;padding:16px;background:var(--panel, rgba(120,130,150,.035))}
+.qa-panel .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.qa-panel h3{margin:0 0 5px}
+.qa-messages{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto;padding:10px 2px;margin:8px 0 12px;scroll-behavior:smooth}
+.qa-welcome{padding:16px;border:1px dashed var(--line, #cbd5e1);border-radius:10px;color:var(--muted, #64748b);font-size:.92rem}
+.qa-message{max-width:92%;padding:11px 13px;border:1px solid var(--line, #d8dee8);border-radius:12px;overflow-wrap:anywhere}
+.qa-user{align-self:flex-end;background:var(--accent-soft, rgba(80,120,220,.10))}
+.qa-assistant{align-self:flex-start;background:var(--surface, rgba(128,128,128,.035))}
+.qa-role{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted, #64748b);margin-bottom:5px}
+.qa-content{font-size:.9rem;line-height:1.55;white-space:normal}
+.qa-meta{font-size:.72rem;color:var(--muted, #64748b);margin-top:8px;padding-top:7px;border-top:1px solid var(--line, #d8dee8)}
+.qa-form textarea{width:100%;resize:vertical;min-height:62px;border:1px solid var(--line, #cbd5e1);border-radius:10px;padding:11px;background:var(--surface, #fff);color:inherit;font:inherit}
+.qa-form .form-actions{align-items:center;flex-wrap:wrap}
+@media(max-width:700px){.qa-panel{padding:11px}.qa-message{max-width:100%}.qa-panel .card-head{flex-wrap:wrap}}
+
+/* Phase 8: interactive historical research memory */
+.research-timeline{margin:14px 0 8px;overflow-x:auto;padding:10px 2px 4px}.timeline-track{display:flex;gap:10px;align-items:stretch;min-width:max-content;border-bottom:1px solid var(--border,#334155);padding:0 4px 12px}.timeline-point{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:130px;max-width:180px;padding:10px;border:1px solid var(--border,#334155);border-radius:10px;background:var(--panel,#111827);color:inherit;text-align:left;cursor:pointer}.timeline-point:hover,.timeline-point:focus-visible{outline:2px solid var(--accent,#60a5fa);outline-offset:1px}.timeline-point strong{font-size:.85rem;white-space:normal}.timeline-point span:last-child{font-size:.75rem;color:var(--muted,#94a3b8)}.timeline-dot{display:block;width:10px;height:10px;border-radius:50%;background:var(--accent,#60a5fa);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,#60a5fa) 18%,transparent)}.historical-qa{border-top:1px solid var(--border,#334155);padding-top:14px}.historical-qa textarea{width:100%;box-sizing:border-box}.memory-diff{overflow-wrap:anywhere}.memory-diff a,.memory-item a{word-break:break-word}.memory-item .form-actions{gap:8px;margin-top:8px}

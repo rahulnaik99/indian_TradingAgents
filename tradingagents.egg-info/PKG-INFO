@@ -1,0 +1,391 @@
+Metadata-Version: 2.4
+Name: tradingagents
+Version: 0.6.0
+Summary: TradingAgents: Multi-Agents LLM Financial Trading Framework
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: langchain-core>=1.6.5
+Requires-Dist: langchain-anthropic>=1.7.4
+Requires-Dist: langchain-google-genai>=4.4.0
+Requires-Dist: langchain-openai>=1.6.6
+Requires-Dist: langgraph>=1.2.12
+Requires-Dist: langgraph-checkpoint-sqlite>=3.1.1
+Requires-Dist: markdown-it-py>=4.0
+Requires-Dist: mcp>=1.9.0
+Requires-Dist: pandas>=3.0.6
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pytz>=2025.2
+Requires-Dist: questionary>=2.1.0
+Requires-Dist: requests>=2.32.4
+Requires-Dist: rich>=14.0.0
+Requires-Dist: typer>=0.21.0
+Requires-Dist: stockstats>=0.6.5
+Requires-Dist: typing-extensions>=4.14.0
+Requires-Dist: yfinance>=1.7.0
+Provides-Extra: dev
+Requires-Dist: ruff>=0.16; extra == "dev"
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-subtests>=0.13; extra == "dev"
+Provides-Extra: bedrock
+Requires-Dist: langchain-aws>=1.7.9; extra == "bedrock"
+Provides-Extra: web
+Requires-Dist: fastapi>=0.115.0; extra == "web"
+Requires-Dist: uvicorn[standard]>=0.30.0; extra == "web"
+Requires-Dist: httpx>=0.27.0; extra == "web"
+Requires-Dist: langsmith>=0.3.45; extra == "web"
+Dynamic: license-file
+
+# TradingAgents India — Swing Research Workbench
+
+A local-first India-market adaptation of the existing TradingAgents/LangGraph repository. It preserves the upstream agent framework and adds a FastAPI-served dashboard, NIFTY 50 universe registry, FYERS market-data adapter, deterministic swing indicators, web/news research via Wigolo REST (Google News RSS fallback), sourced fundamental-data import, optional LangSmith tracing, paper trading, and tightly gated FYERS limit-order operations.
+
+**Important status:** This is a working development package, not a fully validated production trading system. The FYERS live connection has not been tested against your account. Live order placement is disabled by default. Protective stop-loss/target orders are not automatically submitted by the live-order adapter.
+
+## Quick start
+
+### macOS / Linux
+
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+The launcher checks Python 3.11+, creates `.venv` if missing, installs project/web dependencies when the dependency fingerprint changes, creates `.env` from `.env.example` on first launch, and starts FastAPI (which serves the frontend).
+
+### Windows
+
+Run `start.bat` from Command Prompt. Python 3.11+ and the Python Launcher (`py`) are required.
+
+Open:
+- Dashboard: http://127.0.0.1:8000/
+- API docs: http://127.0.0.1:8000/docs
+- Health: http://127.0.0.1:8000/api/health
+
+Default bind is loopback only. Do not expose the app publicly without adding authentication and network controls.
+
+## Current capabilities
+
+- NIFTY 50 dated constituent snapshot and future-ready registry contract.
+- FYERS historical OHLCV retrieval for daily, hourly, 15-minute and session-aware 4-hour aggregation.
+- Deterministic daily/4H/1H multi-timeframe analysis: EMA 20/50/100/200, RSI, ATR, session VWAP where applicable, 20-bar support/resistance, previous candle high/low, relative volume, market-structure approximation, Fibonacci retracement levels, and illustrative stop/target levels.
+- Sourced web search using Wigolo REST `/v1/search` when running; Google News RSS is the search fallback.
+- Integrated LangGraph research workflow that combines the validated FYERS multi-timeframe report, timestamp-filtered company news/events and point-in-time financial facts, then applies deterministic event/fundamental risk checks before optional LLM synthesis.
+- User-triggered background NIFTY 50 batch scan with job status polling.
+- Wigolo page fetch and multi-step research endpoints.
+- Preliminary event classification for RBI monetary policy, regulatory actions, quarterly results, index changes, government policy and corporate actions. Classifications are leads, not verified financial conclusions.
+- SQLite storage for sourced events, imported financial facts and paper orders.
+- Point-in-time CSV financial-fact import and raw XBRL XML fact extraction (taxonomy values are preserved, not guessed into canonical metrics).
+- Moneycontrol table fetcher guarded by `MONEYCONTROL_PERMISSION_CONFIRMED=true`; use only if written permission/licensing for automated collection and AI processing has been obtained. It returns raw table rows and does not automatically convert every table into normalized facts.
+- Paper order placement, simulated fills, long-only positions and realized P&L before costs.
+- Optional LangSmith tracing for selected application functions and automatic LangChain/LangGraph tracing when enabled.
+- Opt-in endpoint for the repository's existing LangGraph workflow. This graph continues to use its upstream dataflows; use the separate **Integrated India research workflow** to combine FYERS technicals with local event/fundamental evidence.
+- FYERS live LIMIT/CNC order placement, modification, cancellation and orderbook operations behind multiple explicit gates. These are not enabled by default and have not been tested with real credentials.
+
+## Configure FYERS market data
+
+Edit `.env` locally:
+
+```dotenv
+FYERS_APP_ID=your_app_id
+FYERS_ACCESS_TOKEN=your_access_token
+```
+
+Then use the dashboard or `GET /api/fyers/history`. Tokens are sensitive; never commit `.env` or paste credentials into chat.
+
+## Shared point-in-time evidence for the original agents
+
+Full Analysis builds a versioned evidence package (`schema_version: 1.0`) shared with the original TradingAgents analyst graph and the India-specific research workflow. It includes the FYERS-derived technical snapshot, timestamp-eligible sourced events, financial facts with units/period/scope/source metadata, dated research citations, and explicit data-quality warnings. Events and facts with missing/invalid publication timestamps or publication times after `as_of` are excluded from the original-agent context. Wigolo synthesis is withheld when its citations cannot all be verified as published by the requested cutoff.
+
+The original Market, Sentiment, News, and Fundamentals Analysts now receive an explicit shared-evidence policy in their system prompts: preserve publication dates and financial units, cite source URLs, surface conflicts with their native tools, and report missing/unverified evidence. A second evidence-discipline instruction is included in the instrument context used by the original Bull/Bear researchers, Research Manager, Trader, risk analysts, and Portfolio Manager so provenance, conflicts and uncertainty carry downstream. LangChain callbacks record live node/tool start, completion, and failure events where the upstream runtime emits those callbacks; final-state reconciliation is used as a fallback and does not overwrite a more precise observed completed/failed status.
+
+The package is research context, not an order instruction. Native upstream tools still run and may return data that conflicts with the shared package; agents are instructed to disclose rather than silently reconcile conflicts. Live external services and a complete provider-backed graph run must be validated in the user's configured environment.
+
+## Shared India evidence tools in the original agent graph
+
+When Full Analysis invokes the original TradingAgents graph for an NSE symbol, the original company-specific tools run through a scoped India adapter:
+
+- Market Analyst candle retrieval uses FYERS daily OHLCV and refuses a silent Yahoo fallback if FYERS data is unavailable.
+- Indicator and verified-snapshot tools use the shared India Daily/4H/1H technical snapshot; missing indicators are disclosed.
+- News Analyst and the company-news portion of Sentiment Analyst use publication-filtered India events and eligible dated Wigolo citations.
+- Fundamentals Analyst statement tools use sourced, point-in-time financial facts while retaining units, reporting periods, scope and source metadata.
+- Unsupported Indian insider-transaction data is explicitly marked unavailable. Global/macro and prediction-market tools remain native upstream sources.
+
+The adapter is scoped to an analysis that supplies an NSE evidence package; other upstream runs retain the original provider behavior. Tool audit records show the data-source mode and mark unavailable results rather than silently substituting providers. See `STEP3_SHARED_AGENT_TOOLS.md` for behavior and validation limits. Live FYERS/LLM graph behavior still requires credentialed integration testing.
+
+## Configure Wigolo web research
+
+Wigolo is the web-intelligence provider for current company news, quarterly-result coverage, RBI/SEBI/NSE/BSE notices, sector policy changes and other material events. On macOS/Linux, `start.sh` auto-starts the separate Wigolo REST daemon on loopback if it is not already running. It then:
+
+- Uses Wigolo search to collect source-linked event leads.
+- Runs Wigolo's multi-step research brief when the daemon is available.
+- Passes that brief and the sourced event rows into the Bull/Bear → Research Manager → Trader → Risk Debate → Portfolio Manager workflow.
+- Records Wigolo Search and Wigolo Deep Research separately in the execution audit.
+- Falls back to Google News RSS for basic search when Wigolo is unavailable; deep research is marked unavailable rather than fabricated.
+
+Your `npx wigolo init` setup is separate from starting the service. `start.sh` starts it automatically; for manual operation use:
+
+```bash
+WIGOLO_LLM_PROVIDER=ollama npx wigolo serve --host 127.0.0.1 --port 3333
+```
+
+The user's `npx wigolo init` output detected Ollama at `http://localhost:11434`; setting `WIGOLO_LLM_PROVIDER=ollama` enables local research synthesis and Wigolo auto-selects an installed Ollama model unless `WIGOLO_LLM_MODEL` is specified. You can set `WIGOLO_AUTO_START=false` to manage the daemon yourself. Configuration lives in `.env`:
+
+```dotenv
+WIGOLO_BASE_URL=http://127.0.0.1:3333
+WIGOLO_AUTO_START=true
+WIGOLO_LLM_PROVIDER=ollama
+# WIGOLO_LLM_MODEL=qwen3:8b
+# WIGOLO_API_TOKEN=your_token_if_configured_on_the_server
+```
+
+Wigolo is AGPL-3.0 and remains a separate installed service; this project connects to its documented REST API rather than bundling or embedding Wigolo source. Web results are evidence leads: prefer primary company/regulator/exchange disclosures, retain publication timestamps, and never use a headline alone as a trading signal.
+
+## Configure LangSmith
+
+```dotenv
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_langsmith_api_key
+LANGSMITH_PROJECT=tradingagents-india
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+```
+
+Tracing is off by default. When enabled, selected custom functions are traced and LangChain/LangGraph calls can be traced through LangSmith environment configuration. Trace payloads may include prompts, public market data and paper-research content; enable it only if you're comfortable sending those payloads to LangSmith. Paper-order details are deliberately not decorated with a custom trace.
+
+## Fundamentals and Moneycontrol
+
+Preferred source hierarchy:
+1. NSE financial results / integrated filings / XBRL.
+2. Company investor-relations pages.
+3. RBI and government sources for macro/policy.
+4. Moneycontrol only if automated use is permitted by written permission/licence.
+
+CSV import endpoint: `POST /api/fundamentals/import-csv` with `Content-Type: text/csv`. Required columns are shown in the dashboard and `/api/fundamentals/source-guidance`. Each fact must include its actual publication timestamp with timezone; period end is not publication time.
+
+XBRL endpoint: `POST /api/fundamentals/xbrl/parse` with JSON fields `symbol`, `source_url`, `published_at`, `scope`, `xml_text`. It extracts raw numeric facts and context periods; taxonomy mapping, units, decimals, and standalone/consolidated semantics must be validated before use.
+
+Moneycontrol endpoint: `GET /api/fundamentals/moneycontrol/fetch?url=...`. It is blocked unless you have secured the required permission and set `MONEYCONTROL_PERMISSION_CONFIRMED=true`. It only accepts HTTPS `moneycontrol.com` URLs and returns raw HTML table rows for review; it does not assert that every extracted number is correct or normalize them automatically.
+
+## Technical analysis API
+
+`GET /api/analysis/{symbol}?lookback_days=365&include_15m=false`
+
+Uses FYERS historical data and deterministic calculations. Core timeframes are Daily + 4H + 1H; 15-minute is optional. 1-minute candles are not part of the primary swing strategy. A bullish alignment produces only a `candidate_for_review`, never an order.
+
+Integrated evidence workflow: `POST /api/research/{symbol}` with JSON such as `{"lookback_days":365,"include_15m":false,"refresh_news":true,"use_llm":false}`. This fetches current technical data, optionally searches current company news, loads saved financial facts/events, filters evidence by `as_of`, and runs a LangGraph workflow (sequential fallback only when LangGraph is absent from the current environment). Set `ENABLE_INDIA_LLM_SYNTHESIS=true` to allow optional LLM synthesis; it is disabled by default.
+
+## News / event API
+
+- `GET /api/news/search?query=...&max_results=10`
+- `GET /api/news/stock/{symbol}`
+- `GET /api/news/research?question=...&depth=quick`
+- `GET /api/web/fetch?url=https://...`
+- `GET /api/news/events?symbol=SBIN`
+- `GET /api/web/status`
+- `POST /api/scan` and `GET /api/scan/{job_id}` for a user-triggered background scan of the configured NIFTY 50 universe.
+
+The severity/direction classifier is a preliminary rule-based triage tool. An event's severity, potential direction, confidence and observed market reaction are different things. Verify RBI, SEBI, NSE, government and issuer claims against original documents.
+
+## Batch scanning
+
+`POST /api/scan` with `{"symbols": [], "lookback_days": 365, "include_15m": false}` starts a background scan of all configured NIFTY 50 stocks; pass a `symbols` list to scan a subset. Poll the returned `poll_url` until the job completes. The adapter shares its FYERS request limiter across requests in the process. A full scan uses roughly two history requests per stock (plus optional 15m requests), so do not run it every five minutes on a Standard quota; use incremental/streaming data for frequent monitoring.
+
+## Paper trading
+
+- `POST /api/paper/orders`
+- `GET /api/paper/orders`
+- `GET /api/paper/portfolio`
+
+Paper fills use the entered reference price. P&L excludes brokerage, taxes, slippage, corporate actions and mark-to-market pricing. This is not a realistic exchange fill simulator.
+
+## Live FYERS orders — disabled by default
+
+The live adapter supports **LIMIT/CNC entry orders only**, plus modify/cancel and orderbook calls. It does not submit linked protective stop-loss/target orders and therefore should not be treated as an end-to-end risk-managed live execution system. Do not enable live trading until the order lifecycle, symbol master, price ticks, exchange/product rules, risk checks, order status reconciliation and protective exits are validated.
+
+If you deliberately choose to enable the adapter, set all server-side gates locally. Live place/modify/cancel endpoints are `POST /api/live/orders`, `PATCH /api/live/orders/{order_id}`, `DELETE /api/live/orders/{order_id}`; orderbook is `GET /api/live/orders?confirm_live_order=PLACE_REAL_ORDER`.
+
+```dotenv
+ENABLE_LIVE_TRADING=true
+LIVE_TRADING_CONFIRMATION=I_UNDERSTAND_REAL_MONEY_RISK
+LIVE_MAX_ORDER_QTY=100
+LIVE_MAX_ORDER_VALUE_INR=50000
+FYERS_ORDER_BASE_URL=https://api-t1.fyers.in/api/v3
+```
+
+Each live operation also requires `confirm_live_order=PLACE_REAL_ORDER`; the UI asks for the same phrase and an additional browser confirmation. Quantity and order notional are capped. The app never sends orders automatically from an LLM signal. A broker response acknowledging a request is not proof of execution. Network timeouts are not retried because the broker may have received the order; reconcile the orderbook before trying again.
+
+## Original LangGraph agent workflow
+
+**Run Full Analysis** now invokes the original TradingAgents graph as part of the India research flow: Market, Sentiment, News and Fundamentals Analysts → Bull/Bear Researchers → Research Manager → Trader → Aggressive/Conservative/Neutral Risk Analysts → Portfolio Manager. This makes configured LLM and data-provider calls and may incur usage costs. The separate **Run agents only** action explicitly invokes the same upstream graph. No live orders are placed by these research actions.
+
+Configure a supported LLM provider using the existing upstream configuration. The graph runs on the `{SYMBOL}.NS` ticker and saves reports through the upstream workflow. It receives the shared, timestamp-filtered India evidence package in the analysts' message context, while retaining its native data tools. Native-tool conflicts must be surfaced rather than silently reconciled. `ENABLE_LANGGRAPH_AGENT_ANALYSIS=true` is required for non-interactive/background callers that invoke the graph without explicit user action. LangSmith tracing is available when configured.
+
+## Current limitations
+
+- The built-in stock universe is a dated NIFTY 50 snapshot; no live index constituent feed or complete historical index membership archive is provided.
+- NIFTY 100 / NIFTY 500 / all-NSE expansion requires additional dated snapshots, data/licensing review and liquidity filters.
+- FYERS endpoints and credentials have not been live-verified in this environment.
+- 4H bars are aggregated from hourly data; validate session boundaries against the provider's actual candle timestamps before production backtesting.
+- Google News RSS results can be stale, duplicated or unverified; Wigolo improves retrieval but does not guarantee truth.
+- Fundamental CSV import is supported; official NSE XBRL taxonomy mapping and fully automatic statement normalization are not complete.
+- Moneycontrol is permission-gated and returns raw tables; normalized automated financial statements remain incomplete.
+- Live order entry is not a complete execution system because protective stop/target orders and full status reconciliation are not automated.
+- Full repository test suite was not run in this environment because the upstream test bootstrap imports `yfinance`, which is missing from the available test environment. Targeted tests are reported in `IMPLEMENTATION_STATUS.md`.
+
+## Safety
+
+This is research software, not financial advice. All market/fundamental/news outputs can be wrong or incomplete. Never rely on a single model output for a trade. Live order placement is disabled by default and should not be enabled until all limitations above are addressed.
+
+### Execution Flow & Coverage Audit
+
+The dashboard now has an **Execution Flow** page. After running technical analysis or integrated research, select **View execution flow** to inspect the persisted run. The page lists registered agents and tools, including components not invoked for the selected workflow, and distinguishes completed, failed, skipped, not invoked, not reached, unavailable, not applicable and unknown states. It also shows recorded inputs/outputs summaries, reasons, and a chronological event timeline. Local audit records are stored in the same SQLite database configured by `TRADINGAGENTS_DB_PATH`.
+
+Execution audit endpoints:
+- `GET /api/executions?limit=30`
+- `GET /api/executions/{run_id}`
+- `GET /api/execution-registry`
+
+The audit provides detailed coverage for the India research workflow and hooks into live LangChain callbacks for recognized internal nodes and tools in the original graph. Callback metadata availability varies by runtime; where a node cannot be identified, final-state reconciliation or `unknown` is used instead of inventing an execution status. Use LangSmith for deeper graph/model tracing when configured.
+
+## Bulk fundamentals for a wide universe (Yahoo statements)
+
+`python -m tradingagents.india.bulk_fundamentals` fetches annual and quarterly income statement, balance sheet and cash flow (about 5 years requested) from Yahoo Finance for every symbol in a universe, stores them as sourced facts, and writes a coverage report (`data/fundamentals_coverage.csv`).
+
+```bash
+python -m tradingagents.india.bulk_fundamentals universe-import --nse-csv ind_nifty500list.csv --index "NIFTY 500" --date 2026-09-30
+python -m tradingagents.india.bulk_fundamentals run --universe-csv tradingagents/india/data/nifty_500_constituents.csv --index "NIFTY 500" --limit 10   # trial
+python -m tradingagents.india.bulk_fundamentals run --universe-csv tradingagents/india/data/nifty_500_constituents.csv --index "NIFTY 500"
+python -m tradingagents.india.bulk_fundamentals report
+```
+
+Runs are resumable (progress in `data/fundamentals_bulk_progress.jsonl`), throttled, retried, and stop after repeated consecutive failures. Single symbol: `POST /api/fundamentals/{symbol}/refresh-statements`.
+
+Limits: these are provider snapshots, not filings; `published_at` is the retrieval time (so point-in-time guards hide them for earlier `as_of` dates); Yahoo usually returns about 4 annual periods, so check `needs_filings_for_depth` in the coverage CSV. Depth beyond that needs the planned NSE/BSE filings fetcher.
+
+### Refreshing fundamentals from the dashboard
+
+Data workspace → **Fundamental facts**:
+
+- **Refresh fundamentals** fetches Yahoo statements plus the P/E-style snapshot for the selected stock (about 5–15 s). The line under the buttons shows when statements and the snapshot were last refreshed (IST) and turns red when older than 7 days.
+- **Refresh all (Nifty 500)** runs the bulk job in the background with live progress (`done/failed/skipped`). One run at a time; progress is shared with the command-line job, so interrupted runs resume and symbols refreshed in the last 7 days are skipped. If you restart the server mid-run it stops; click again to resume.
+- The statements table has Annual and Quarterly tabs (INR crore). Raw stored facts are in a collapsed section.
+- The Fundamentals Analyst tools (`get_income_statement`, `get_balance_sheet`, `get_cashflow`) now return a metric-by-period table for the requested frequency from the evidence package, labelled as Yahoo provider data (not filings, scope not stated).
+
+Weekly refresh with your Mac's scheduler (edit paths, then `crontab -e`):
+
+```
+0 7 * * 1 cd /path/to/TradingAgents && .venv/bin/python -m tradingagents.india.bulk_fundamentals run --universe-csv tradingagents/india/data/nifty_500_constituents.csv --index "NIFTY 500" >> data/fundamentals_cron.log 2>&1
+```
+
+Quality check: `python -m tradingagents.india.fundamentals_quality`.
+
+## Events calendar (Events page)
+
+Month calendar of dated market events. Click a date to see its events and sources.
+
+- **Fed/FOMC** (yellow) and **RBI MPC** dates come from `tradingagents/india/data/macro_events.csv` (FOMC 2026 per the Fed schedule, 2027 flagged tentative; RBI FY27 per RBI press release 2025-2026/2306). NSE trading holidays reuse the existing holiday CSV. Update the CSVs when new schedules are published.
+- **NSE** event calendar, board meetings, corporate actions (dividend, bonus/split, buyback) and block deals use NSE's unofficial JSON endpoints. NSE blocks clients without browser cookies: the app warms a session automatically; if NSE still blocks it, paste your browser's `Cookie` header into `NSE_COOKIES` in `.env`. NSE publishes block deals for the current session only, so they appear on the day they occur.
+- **Crypto**: CoinMarketCal (`COINMARKETCAL_API_KEY`) and dated events detected in cryptocurrency.cv headlines (`CRYPTO_NEWS_BASE_URL`, hosted by default or your local copy).
+- **News → calendar**: `INDIANAPI_API_KEY` enables the IndianAPI feed (`GET /api/news/feed`, "Fetch latest news" button). Existing news searches also scan results for sentences containing both an explicit date and an event trigger (results, dividend, buyback, board meeting, IPO, RBI/Fed, ...). These appear as dashed, **unverified** leads; official sources replace them when the same event arrives.
+- Refresh from the UI ("Refresh sources") or cron: `python -m tradingagents.india.event_calendar refresh [--sources nse static ...]`. Each source reports its own status, so one blocked source never breaks the rest.
+- API: `GET /api/calendar/events?month=YYYY-MM&asset=all|nse|crypto&category=...`, `GET /api/calendar/upcoming`, `GET /api/calendar/sources`, `POST /api/calendar/refresh`, `POST /api/calendar/events` (add your own), `POST /api/calendar/events/{id}/hide`.
+
+### Google Calendar sync (optional)
+
+Pushes the Events calendar to its own Google Calendar, **Market Events (TradingAgents)**, so it shows on your phone.
+
+1. [Google Cloud Console](https://console.cloud.google.com/): create a project and enable **Google Calendar API**.
+2. OAuth consent screen: type External, add your Google account as a test user. (As far as we know, apps left in *Testing* get refresh tokens that expire after about 7 days; the app then asks you to connect again. Publishing the app to *In production* avoids that.)
+3. Credentials: **Create OAuth client ID**, application type **Desktop app**. Put the values in `.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then restart.
+4. Events page → **Google Calendar sync** → **Connect**. Do this on the computer running the app (open `http://127.0.0.1:8000`); Google only allows the sign-in redirect to the local machine.
+
+Behaviour: the app requests only the `calendar.app.created` scope, so it can manage only the calendar it created, never your other calendars. Events are all-day and not marked busy; Fed/RBI are yellow. Each event has a stable id, so syncing again updates in place and never duplicates; changed events are patched and removed, hidden or superseded events are deleted (only inside the sync window). After a connect, every **Refresh sources** syncs automatically (switch off in the card). Filters: verified-only (default), event types, assets, and an optional symbol list; Fed/RBI always pass. To undo everything, use Disconnect with "also delete the calendar", or delete the calendar in Google. API: `/api/gcal/status|connect|settings|sync|disconnect`.
+
+### New LangGraph pipeline — Technical Analyst
+
+The `tradingagents.india.langgraph_pipeline.agents.technical_analyst.agent.analyze_technicals`
+node consumes `request` and `market_data.candles_by_timeframe` from graph state.
+It applies defensive point-in-time filtering and delegates indicators to the
+existing deterministic `tradingagents.india.technical` module. Its state update
+contains `technical_data`, `technical_analysis`, and `workflow_trace`. An optional
+injected interpreter may add narrative fields, but cannot replace numeric
+indicator values.
+
+### New LangGraph pipeline — Trader Agent (Step 5)
+
+`tradingagents.india.langgraph_pipeline.agents.trader.agent.build_trade_proposal(state)` is a research-only node. It consumes `fundamental_analysis`, `technical_analysis`, and `technical_data`, and returns a `trader_analysis` state update. If an `interpreter` is injected, it can propose an action and rationale; proposed price levels are always read from deterministic technical output and validated. No orders are placed.
+
+### New LangGraph pipeline — Step 6
+The `tradingagents.india.langgraph_pipeline` package now includes a deterministic Risk Analyst node (`review_trade_risk` / `risk_analyst_node`). It reviews the Trader Agent proposal against configurable limits. `approved_for_review` is not permission to execute an order; the node never places orders. Portfolio sizing checks are only calculated when equity and proposed quantity are supplied.
+
+### New LangGraph Pipeline — Step 7: Hedge Fund Manager
+
+The research-only `hedge_fund_manager_node` reconciles Fundamental Analyst,
+Technical Analyst, Trader Agent, and Risk Analyst outputs. A hard risk rejection
+cannot be overridden. Missing critical reports or incomplete risk review fail
+closed to `NEEDS_REVIEW`. The node returns `manager_analysis` and a validated
+`final_verdict`; it never places orders.
+
+```python
+from tradingagents.india.langgraph_pipeline import hedge_fund_manager_node
+
+update = hedge_fund_manager_node(state)
+verdict = update["final_verdict"]
+```
+
+
+## New LangGraph Trading Analysis Pipeline — Step 8
+
+The new research-only graph is assembled in `tradingagents/india/langgraph_pipeline/graph.py`.
+
+Build the compiled workflow with `create_trading_analysis_graph(...)`, or call `run_trading_analysis(request, ...)`. Install the repository dependencies (including LangGraph) before compiling. Provider adapters and LLM interpreters can be injected for testing or deployment. The graph validates a timezone-aware `request.as_of`, collects evidence, runs the Fundamental and Technical Analysts, builds a trade proposal, performs risk review, and produces a validated final verdict. Risk rejection routes directly to `NO_TRADE`. The graph never places live orders.
+
+The collector retries raised exceptions up to `collection_max_attempts` (default 2). Provider-returned errors are preserved in evidence metadata and do not automatically trigger retries. Analyst exceptions fail closed into review-required outputs.
+## New LangGraph Trading Analysis API
+
+The research-only pipeline API and endpoint documentation are available in [`docs/langgraph_pipeline_api.md`](docs/langgraph_pipeline_api.md). Start it with `uvicorn tradingagents.india.langgraph_pipeline.api_main:app --host 127.0.0.1 --port 8000` after installing project dependencies. The API keeps FYERS as its market-data provider and has a separately gated Kite MCP GTT execution boundary. Live submission is disabled by default; see `.env.example` and `docs/langgraph_pipeline_api.md` for execution gates and GTT safety limitations.
+
+## LangGraph Pipeline Integration Hardening (Step 11)
+
+The current integration-hardening pass adds two defensive checks:
+
+- Additional Q&A research is accepted only when both the saved analysis cutoff and the research publication timestamp are timezone-aware and the publication timestamp is no later than the cutoff.
+- SQLite foreign-key enforcement is enabled on every connection so Q&A records cannot reference a nonexistent analysis.
+
+Focused pipeline tests: `44 passed` when run outside the repository's shared `tests/conftest.py` initialization. The shared test configuration imports `yfinance`, which is not installed in this execution environment. Network access is unavailable here, so installing missing dependencies and running the real LangGraph runtime could not be completed. Graph tests use isolated fakes where needed; a real compiled graph run remains an outstanding deployment verification step.
+
+
+## Remote Kite MCP execution (FYERS remains market-data provider)
+
+The pipeline keeps the existing FYERS integration for market data. Trade execution uses the hosted Kite MCP endpoint directly; no local Kite MCP server is started.
+
+Configure `.env` from `.env.example`:
+
+```dotenv
+KITE_MCP_URL=https://mcp.kite.trade/mcp
+KITE_GTT_TOOL_NAME=place_gtt_order
+PLACE_ORDER=false
+AMOUNT_PER_TRADE=10000
+MAX_RISK_PER_TRADE=500
+REQUIRE_STOP_LOSS=true
+ALLOW_UNPROTECTED_ENTRY_GTT=false
+```
+
+The client discovers server tools through MCP `tools/list` before invoking a requested tool. The official server repository documents `place_gtt_order` and `get_gtts`; the hosted service can change or restrict capabilities. A successful tool-list operation does not prove account authorization. The Python application has its own MCP connection and must complete any required Kite authorization; authorizing Claude Desktop does not automatically authorize this app.
+
+Keep `PLACE_ORDER=false` while validating connectivity and authorization. GTT submission is not a fill confirmation. The current executor intentionally refuses live submission when stop-loss protection is required but the entry-fill/OCO-exit reconciliation worker is not configured. Do not enable unprotected entry GTTs for live trading.
+
+
+### Kite portfolio manager (remote MCP)
+
+The API includes a read-only `GET /portfolio` endpoint backed by the remote Kite MCP endpoint (`KITE_MCP_URL`, default `https://mcp.kite.trade/mcp`). It discovers available tools and calls `get_holdings`; when available it also reads `get_positions` and `get_margins`. It does not use Kite for market data, does not place orders, and does not invent values when a tool is unavailable. `GET /portfolio?include_positions=false&include_margins=false` limits the request to holdings.
+
+The Python service is available as `PortfolioManager` in `tradingagents.india.langgraph_pipeline.portfolio_manager`. The MCP server must expose the tools and authorize this Python client separately; authorizing another desktop application does not transfer credentials or session state.
+
+Example:
+
+```bash
+curl http://127.0.0.1:8000/portfolio
+```
+
+The portfolio endpoint is read-only. The existing FYERS integration remains the market-data provider.
